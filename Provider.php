@@ -2,9 +2,9 @@
 
 namespace SocialiteProviders\Live;
 
+use SocialiteProviders\Manager\OAuth2\User;
 use Laravel\Socialite\Two\ProviderInterface;
 use SocialiteProviders\Manager\OAuth2\AbstractProvider;
-use SocialiteProviders\Manager\OAuth2\User;
 
 class Provider extends AbstractProvider implements ProviderInterface
 {
@@ -18,10 +18,7 @@ class Provider extends AbstractProvider implements ProviderInterface
      */
     protected $scopes = ['User.Read User.ReadBasic.All'];
 
-    /**
-     * {@inheritdoc}
-     */
-    protected $scopeSeparator = ' ';
+    protected $fields = ['id', 'name', 'email'];
 
     /**
      * {@inheritdoc}
@@ -47,9 +44,9 @@ class Provider extends AbstractProvider implements ProviderInterface
     protected function getUserByToken($token)
     {
         $response = $this->getHttpClient()->get(
-            'https://graph.microsoft.com/v1.0/me',
+            'https://graph.microsoft.com/v1.0/me?$select='.implode(',', $this->fields),
             ['headers' => [
-                'Accept'        => 'application/json',
+                'Accept'=>'application/json',
                 'Authorization' => 'Bearer '.$token,
             ],
         ]);
@@ -63,11 +60,11 @@ class Provider extends AbstractProvider implements ProviderInterface
     protected function mapUserToObject(array $user)
     {
         return (new User())->setRaw($user)->map([
-            'id'       => $user['id'],
+            'id' => isset($user['id']) ? $user['id'] : null,
             'nickname' => null,
-            'name'     => $user['displayName'],
-            'email'    => $user['userPrincipalName'],
-            'avatar'   => null,
+            'name' => isset($user['displayName']) ? $user['displayName'] : null,
+            'email' => isset($user['userPrincipalName']) ? $user['userPrincipalName'] : null,
+            'avatar' => null,
         ]);
     }
 
@@ -79,5 +76,18 @@ class Provider extends AbstractProvider implements ProviderInterface
         return array_merge(parent::getTokenFields($code), [
             'grant_type' => 'authorization_code',
         ]);
+    }
+
+    /**
+     * Set the user fields to request from Live.
+     *
+     * @param  array  $fields
+     * @return $this
+     */
+    public function fields(array $fields)
+    {
+        $this->fields = $fields;
+
+        return $this;
     }
 }
